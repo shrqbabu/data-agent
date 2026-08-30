@@ -1,0 +1,18 @@
+#!/bin/sh
+
+##############################################################################
+# Gradle wrapper launcher. Requires a Gradle installation (or the gradle tool
+# on PATH). In CI the wrapper jar is generated via `gradle wrapper`; locally
+# install Gradle or use your IDE's bundled Gradle.
+##############################################################################
+
+if [ -n "$GRADLE_HOME" ] && [ -x "$GRADLE_HOME/bin/gradle" ]; then
+    exec "$GRADLE_HOME/bin/gradle" "$@"
+fi
+
+if command -v gradle >/dev/null 2>&1; then
+    exec gradle "$@"
+fi
+
+echo "Gradle not found on PATH. Install Gradle (or set GRADLE_HOME) to use this wrapper." >&2
+exit 1

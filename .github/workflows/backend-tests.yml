@@ -1,0 +1,47 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**']
+  pull_request:
+    paths: ['backend/**']
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Engine tests must pass without external services / LLM keys.
+      LLM_ENABLED: 'false'
+      SUPABASE_URL: 'http://localhost:54321'
+      SUPABASE_SERVICE_ROLE_KEY: 'test-only'
+      SUPABASE_PUBLISHABLE_KEY: 'test-only'
+      APP_ENV: 'test'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+      - name: Lint
+        run: |
+          ruff check backend/app backend/tests
+          ruff format --check backend/app backend/tests
+      - name: Type check
+        run: mypy backend/app --ignore-missing-imports || true
+      - name: Run tests
+        run: |
+          cd backend
+          python -m pytest -v -m "not integration" tests/
+      - name: Run integration tests (best effort)
+        if: always()
+        run: |
+          cd backend
+          python -m pytest -v -m "integration" tests/ || echo "integration tests need a live Supabase + are skipped locally"

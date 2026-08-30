@@ -1,0 +1,37 @@
+name: Supabase Migrations & Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**']
+  pull_request:
+    paths: ['supabase/**']
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase stack
+        run: supabase start
+
+      - name: Run migrations against local Postgres
+        run: supabase db reset
+
+      - name: Verify RLS policies are applied
+        run: supabase db lint
+
+      - name: Type-check Edge Functions
+        working-directory: supabase/functions
+        run: |
+          npx -y deno@latest task check 2>/dev/null || \
+          npx -y deno@latest check _shared/*.ts */index.ts
+
+      - name: Stop stack
+        if: always()
+        run: supabase stop

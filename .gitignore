@@ -1,0 +1,48 @@
+# --- Android ---
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+*.iml
+*.keystore
+android/local.properties
+android/app/src/main/res/values/strings-release.xml
+
+# --- Python backend ---
+backend/.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+backend/.env
+*.egg-info/
+dist/
+build/
+
+# --- Node / Edge Functions ---
+supabase/functions/node_modules/
+supabase/.temp/
+supabase/.branches/
+
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/*.test.*.key
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Generated dashboard/artifacts (local) ---
+backend/tests/output/
+*.png
+!docs/**/*.png
