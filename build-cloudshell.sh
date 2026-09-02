@@ -5,22 +5,18 @@ echo "=========================================="
 echo "🚀 Building Analytics Agent in Google Cloud Shell"
 echo "=========================================="
 
-# Check if running in Cloud Shell
-if [ -n "$CLOUD_SHELL" ]; then
-    echo "✅ Running in Google Cloud Shell"
-else
-    echo "ℹ️  Environment: Standard Linux / Cloud Shell"
-fi
-
-# Project ID setup
 PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-$(gcloud config get-value project 2>/dev/null || echo 'analytics-agent')}"
 echo "📋 Project ID: $PROJECT_ID"
 
-# Build Android APK using Docker with Android SDK 35
+# Step 1: Build Android APK
 echo ""
 echo "=========================================="
 echo "📦 Step 1: Building Android APK..."
 echo "=========================================="
+
+# Clean up stale locks and previous build folders on host
+echo "➜ Cleaning previous locks..."
+rm -rf android/.gradle android/app/build
 
 if command -v docker &> /dev/null; then
     echo "Using Docker container: ghcr.io/cirruslabs/android-sdk:35"
@@ -30,7 +26,10 @@ if command -v docker &> /dev/null; then
       ghcr.io/cirruslabs/android-sdk:35 \
       bash -c '
         set -e
-        echo "➜ Installing Gradle 8.11.1 inside build container..."
+        export GRADLE_USER_HOME=/tmp/.gradle
+        rm -rf /workspace/.gradle /workspace/app/build
+
+        echo "➜ Installing Gradle 8.11.1..."
         if ! command -v gradle &> /dev/null; then
             mkdir -p /opt/gradle
             curl -sSL https://services.gradle.org/distributions/gradle-8.11.1-bin.zip -o /tmp/gradle.zip
@@ -39,19 +38,15 @@ if command -v docker &> /dev/null; then
             export PATH=/opt/gradle/gradle-8.11.1/bin:$PATH
         fi
 
-        echo "➜ Generating official Gradle wrapper..."
-        gradle wrapper --gradle-version 8.11.1 --distribution-type bin || true
-        chmod +x ./gradlew || true
-
         echo "➜ Compiling Android APK (:app:assembleDebug)..."
         gradle :app:assembleDebug --stacktrace --no-daemon
       '
 else
-    echo "❌ Docker not available in this environment."
+    echo "❌ Docker not available."
     exit 1
 fi
 
-# Build Backend Docker Image
+# Step 2: Build Backend Docker Image
 echo ""
 echo "=========================================="
 echo "🐳 Step 2: Building Backend Docker Image..."
@@ -70,12 +65,7 @@ if [ -f "$APK_PATH" ]; then
     echo "📱 Android APK generated at:"
     echo "   $APK_PATH"
     echo ""
-    echo "📥 To download in Cloud Shell, run:"
+    echo "📥 Run this command to download APK:"
     echo "   cloudshell download $APK_PATH"
-else
-    echo "⚠️ APK path check: android/app/build/outputs/apk/debug/"
 fi
-echo ""
-echo "🐳 Backend Docker Image:"
-echo "   gcr.io/${PROJECT_ID}/analytics-agent-backend:latest"
 echo "=========================================="
