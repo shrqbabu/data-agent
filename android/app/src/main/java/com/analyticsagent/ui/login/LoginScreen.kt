@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.analyticsagent.AppContainer
 import com.analyticsagent.ui.components.ErrorBox
@@ -41,7 +42,7 @@ import com.analyticsagent.ui.components.VmFactory
 @Composable
 fun LoginScreen(container: AppContainer) {
     val vm: LoginViewModel = viewModel(factory = VmFactory.from { LoginViewModel(container.authRepository) })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(

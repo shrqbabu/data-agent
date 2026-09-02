@@ -3,6 +3,7 @@ package com.analyticsagent.ui.quality
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -45,7 +47,7 @@ fun DataQualityScreen(container: AppContainer, nav: NavController, projectId: St
     val vm: DataQualityViewModel = viewModel(factory = VmFactory.from {
         DataQualityViewModel(container.datasetRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(datasetId) { vm.load(datasetId) }
 
@@ -87,7 +89,7 @@ fun DataQualityScreen(container: AppContainer, nav: NavController, projectId: St
                     }
                 }
                 if (state.quality != null) {
-                    val q = state.quality
+                    val q = state.quality!!
                     item {
                         val completeness = JsonFormat.number(q["completeness"], "pct")
                         val validity = JsonFormat.number(q["validity"], "pct")
@@ -113,9 +115,9 @@ fun DataQualityScreen(container: AppContainer, nav: NavController, projectId: St
 }
 
 @Composable
-private fun Tile(label: String, value: String) {
+private fun RowScope.Tile(label: String, value: String) {
     Card(
-        Modifier.weight(1f),
+        modifier = Modifier.weight(1f),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
     ) {
         Column(Modifier.padding(12.dp)) {

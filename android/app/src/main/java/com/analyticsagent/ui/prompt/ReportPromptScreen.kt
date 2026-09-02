@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -44,7 +45,7 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
     val vm: ReportPromptViewModel = viewModel(factory = VmFactory.from {
         ReportPromptViewModel(container.analysisRepository, container.datasetRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId) { vm.load(projectId) }
 
@@ -118,9 +119,9 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
                     }
                     items(state.promptHistory, key = { it.runId }) { item ->
                         Card(
-                            Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             onClick = { vm.usePrompt(item.prompt) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         ) {
                             Column(Modifier.padding(12.dp)) {
                                 Text("\"${item.prompt.take(90)}${if (item.prompt.length > 90) "…" else ""}\"",

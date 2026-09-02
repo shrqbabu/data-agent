@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -50,7 +51,7 @@ fun ProjectsScreen(container: AppContainer, nav: NavController) {
     val vm: ProjectsViewModel = viewModel(factory = VmFactory.from {
         ProjectsViewModel(container.projectRepository, container.authRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

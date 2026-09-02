@@ -47,7 +47,7 @@ class StorageUploader(
         return withContext(Dispatchers.IO) {
             try {
                 val body = object : RequestBody() {
-                    override fun contentType() = mimeType.let { it.toMediaType() }
+                    override fun contentType() = (if (mime.isBlank()) "application/octet-stream" else mime).toMediaType()
 
                     override fun contentLength(): Long = totalBytes
 

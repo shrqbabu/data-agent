@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -43,7 +44,7 @@ fun ProjectSettingsScreen(container: AppContainer, nav: NavController, projectId
     val vm: ProjectSettingsViewModel = viewModel(factory = VmFactory.from {
         ProjectSettingsViewModel(container.projectRepository, container.analysisRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(projectId) { vm.load(projectId) }

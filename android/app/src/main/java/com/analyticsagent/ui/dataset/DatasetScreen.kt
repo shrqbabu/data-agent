@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -65,7 +66,7 @@ fun DatasetScreen(container: AppContainer, nav: NavController, projectId: String
     val vm: DatasetViewModel = viewModel(factory = VmFactory.from {
         DatasetViewModel(container.projectRepository, container.datasetRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     var schemaFor by remember { mutableStateOf<Dataset?>(null) }

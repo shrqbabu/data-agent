@@ -42,5 +42,7 @@ class ResultsViewModel(private val analysis: AnalysisRepository) : ViewModel() {
         }
     }
 
-    fun selectTab(tab: ResultsTab) = _state.value = _state.value.copy(tab = tab)
+    fun selectTab(tab: ResultsTab) {
+        _state.value = _state.value.copy(tab = tab)
+    }
 }

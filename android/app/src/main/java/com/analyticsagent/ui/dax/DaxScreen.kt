@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -45,7 +46,7 @@ fun DaxScreen(container: AppContainer, nav: NavController, projectId: String, ru
     val vm: DaxViewModel = viewModel(factory = VmFactory.from {
         DaxViewModel(container.analysisRepository, container.artifactRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(runId) { vm.load(runId) }

@@ -89,7 +89,11 @@ class DatasetViewModel(
         )
         viewModelScope.launch {
             when (val v = datasetsRepo.validate(pid, fileName, fileSize, mimeType)) {
-                is AppResult.Error -> fail(v.error.userMessage)
+                is AppResult.Error -> {
+                    _state.value = _state.value.copy(
+                        upload = UploadState(phase = UploadPhase.Error, error = v.error.userMessage),
+                    )
+                }
                 is AppResult.Success -> uploadAfterValidate(v.data, openStream, onComplete)
             }
         }

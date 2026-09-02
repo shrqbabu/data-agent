@@ -9,70 +9,73 @@ echo "=========================================="
 if [ -n "$CLOUD_SHELL" ]; then
     echo "✅ Running in Google Cloud Shell"
 else
-    echo "⚠️  Not detected as Cloud Shell, but continuing anyway..."
+    echo "ℹ️  Environment: Standard Linux / Cloud Shell"
 fi
 
-# Configuration
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
+# Project ID setup
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-$(gcloud config get-value project 2>/dev/null || echo 'analytics-agent')}"
 echo "📋 Project ID: $PROJECT_ID"
 
-# Build Android APK using Docker
+# Build Android APK using Docker with Android SDK 35
 echo ""
 echo "=========================================="
-echo "📦 Building Android APK..."
+echo "📦 Step 1: Building Android APK..."
 echo "=========================================="
 
 if command -v docker &> /dev/null; then
-    echo "Using Docker with Android SDK 35..."
+    echo "Using Docker container: ghcr.io/cirruslabs/android-sdk:35"
     docker run --rm \
       -v "$(pwd)/android":/workspace \
       -w /workspace \
       ghcr.io/cirruslabs/android-sdk:35 \
-      bash -c "
+      bash -c '
         set -e
-        echo '➜ Setting up Gradle wrapper...'
-        gradle wrapper --gradle-version 8.11.1 || true
-        chmod +x ./gradlew
+        echo "➜ Installing Gradle 8.11.1 inside build container..."
+        if ! command -v gradle &> /dev/null; then
+            mkdir -p /opt/gradle
+            curl -sSL https://services.gradle.org/distributions/gradle-8.11.1-bin.zip -o /tmp/gradle.zip
+            unzip -q -o /tmp/gradle.zip -d /opt/gradle
+            rm -f /tmp/gradle.zip
+            export PATH=/opt/gradle/gradle-8.11.1/bin:$PATH
+        fi
 
-        echo '➜ Building APK...'
-        ./gradlew :app:assembleDebug --stacktrace --no-daemon
-      "
+        echo "➜ Generating official Gradle wrapper..."
+        gradle wrapper --gradle-version 8.11.1 --distribution-type bin || true
+        chmod +x ./gradlew || true
+
+        echo "➜ Compiling Android APK (:app:assembleDebug)..."
+        gradle :app:assembleDebug --stacktrace --no-daemon
+      '
 else
-    echo "❌ Docker not available. Please enable Docker in Cloud Shell."
+    echo "❌ Docker not available in this environment."
     exit 1
 fi
 
 # Build Backend Docker Image
 echo ""
 echo "=========================================="
-echo "🐳 Building Backend Docker Image..."
+echo "🐳 Step 2: Building Backend Docker Image..."
 echo "=========================================="
 
 cd backend
-docker build -t gcr.io/${PROJECT_ID}/analytics-agent-backend:latest .
+docker build -t "gcr.io/${PROJECT_ID}/analytics-agent-backend:latest" .
 cd ..
 
 echo ""
 echo "=========================================="
-echo "✅ Build Complete!"
+echo "🎉 Build Complete!"
 echo "=========================================="
+APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+if [ -f "$APK_PATH" ]; then
+    echo "📱 Android APK generated at:"
+    echo "   $APK_PATH"
+    echo ""
+    echo "📥 To download in Cloud Shell, run:"
+    echo "   cloudshell download $APK_PATH"
+else
+    echo "⚠️ APK path check: android/app/build/outputs/apk/debug/"
+fi
 echo ""
-echo "📱 Android APK: android/app/build/outputs/apk/debug/app-debug.apk"
-echo "🐳 Docker Image: gcr.io/${PROJECT_ID}/analytics-agent-backend:latest"
-echo ""
-echo "Next Steps:"
-echo ""
-echo "1. Download APK:"
-echo "   cloudshell download android/app/build/outputs/apk/debug/app-debug.apk"
-echo ""
-echo "2. Push Docker image to GCR:"
-echo "   docker push gcr.io/${PROJECT_ID}/analytics-agent-backend:latest"
-echo ""
-echo "3. Deploy to Cloud Run:"
-echo "   gcloud run deploy analytics-agent-backend \\"
-echo "     --image gcr.io/${PROJECT_ID}/analytics-agent-backend:latest \\"
-echo "     --platform managed \\"
-echo "     --region us-central1 \\"
-echo "     --allow-unauthenticated \\"
-echo "     --set-env-vars SUPABASE_URL=...,SUPABASE_SERVICE_KEY=...,JWT_SECRET=...,ANTHROPIC_API_KEY=..."
+echo "🐳 Backend Docker Image:"
+echo "   gcr.io/${PROJECT_ID}/analytics-agent-backend:latest"
 echo "=========================================="

@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -38,7 +39,7 @@ fun AnalysisProgressScreen(container: AppContainer, nav: NavController, projectI
     val vm: AnalysisProgressViewModel = viewModel(factory = VmFactory.from {
         AnalysisProgressViewModel(container.analysisRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(runId) { vm.startPolling(runId) }
 

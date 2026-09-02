@@ -23,9 +23,17 @@ class NewProjectViewModel(private val projects: ProjectRepository) : ViewModel()
     private var _created = MutableStateFlow<Project?>(null)
     val created: kotlinx.coroutines.flow.StateFlow<Project?> = _created
 
-    fun onName(v: String) = _state.value = _state.value.copy(name = v, error = null)
-    fun onDescription(v: String) = _state.value = _state.value.copy(description = v, error = null)
-    fun clearCreated() { _created.value = null }
+    fun onName(v: String) {
+        _state.value = _state.value.copy(name = v, error = null)
+    }
+
+    fun onDescription(v: String) {
+        _state.value = _state.value.copy(description = v, error = null)
+    }
+
+    fun clearCreated() {
+        _created.value = null
+    }
 
     fun create(onDone: (Project) -> Unit) {
         if (_state.value.name.isBlank()) {

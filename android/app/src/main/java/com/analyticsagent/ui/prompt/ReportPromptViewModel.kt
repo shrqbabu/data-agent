@@ -51,9 +51,13 @@ class ReportPromptViewModel(
         }
     }
 
-    fun onPromptChange(v: String) = _state.value = _state.value.copy(prompt = v, error = null)
+    fun onPromptChange(v: String) {
+        _state.value = _state.value.copy(prompt = v, error = null)
+    }
 
-    fun usePrompt(p: String) = _state.value = _state.value.copy(prompt = p, error = null)
+    fun usePrompt(p: String) {
+        _state.value = _state.value.copy(prompt = p, error = null)
+    }
 
     fun generate(onCreated: (Run) -> Unit) {
         val s = _state.value

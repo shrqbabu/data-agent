@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -28,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
@@ -47,7 +49,7 @@ fun ResultsScreen(container: AppContainer, nav: NavController, projectId: String
     val vm: ResultsViewModel = viewModel(factory = VmFactory.from {
         ResultsViewModel(container.analysisRepository)
     })
-    val state by vm.state
+    val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(runId) { vm.load(runId) }
 
@@ -243,11 +245,18 @@ private fun DaxTab(measures: List<DaxMeasure>) {
                     Text(m.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text(m.daxCode, style = MaterialTheme.typography.bodySmall)
+                    if (measureHasPurpose(m)) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(m.purpose ?: "", style = MaterialTheme.typography.labelSmall,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
     }
 }
+
+private fun measureHasPurpose(m: DaxMeasure): Boolean = !m.purpose.isNullOrBlank()
 
 @Composable
 private fun DashboardTab(detail: com.analyticsagent.domain.model.RunDetail, projectId: String, runId: String, nav: NavController) {
