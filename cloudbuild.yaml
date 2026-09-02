@@ -1,0 +1,65 @@
+steps:
+  # Step 1: Build Android APK
+  - name: 'ghcr.io/cirruslabs/android-sdk:35'
+    entrypoint: 'bash'
+    dir: 'android'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "Setting up Gradle wrapper..."
+        gradle wrapper --gradle-version 8.11.1 || true
+        chmod +x ./gradlew
+
+        echo "Building Android APK..."
+        ./gradlew :app:assembleDebug \
+          -PANALYTICS_AGENT_SUPABASE_URL="${_SUPABASE_URL}" \
+          -PANALYTICS_AGENT_SUPABASE_KEY="${_SUPABASE_KEY}" \
+          -PANALYTICS_AGENT_API_URL="${_API_URL}" \
+          --stacktrace --no-daemon
+
+  # Step 2: Build Backend Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/analytics-agent-backend:$SHORT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/analytics-agent-backend:latest'
+      - '-f'
+      - 'backend/Dockerfile'
+      - 'backend'
+
+  # Step 3: Push Backend Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'gcr.io/$PROJECT_ID/analytics-agent-backend'
+
+  # Step 4: Upload APK to Cloud Storage
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args:
+      - 'cp'
+      - 'android/app/build/outputs/apk/debug/app-debug.apk'
+      - 'gs://${_GCS_BUCKET}/apk-builds/$BUILD_ID/app-debug.apk'
+
+# Artifacts configuration
+artifacts:
+  objects:
+    location: 'gs://${_GCS_BUCKET}/apk-builds/$BUILD_ID'
+    paths:
+      - 'android/app/build/outputs/apk/debug/*.apk'
+
+# Substitution variables
+substitutions:
+  _GCS_BUCKET: 'analytics-agent-artifacts'
+  _SUPABASE_URL: ''
+  _SUPABASE_KEY: ''
+  _API_URL: ''
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+  timeout: '1800s'  # 30 minutes

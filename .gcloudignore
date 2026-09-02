@@ -1,0 +1,37 @@
+# Git files
+.git
+.gitignore
+.github/
+
+# Documentation
+docs/
+README.md
+*.md
+
+# Build artifacts
+android/app/build/
+android/.gradle/
+android/local.properties
+backend/__pycache__/
+backend/.pytest_cache/
+backend/**/__pycache__/
+backend/**/*.pyc
+
+# Environment files
+.env
+.env.local
+**/.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test files
+backend/tests/
+android/app/src/test/
+android/app/src/androidTest/
+
+# Supabase
+supabase/
