@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -238,7 +239,7 @@ private fun DatasetCard(dataset: Dataset, onViewSchema: () -> Unit, onViewQualit
 }
 
 @Composable
-private fun StatBox(label: String, value: String) {
+private fun RowScope.StatBox(label: String, value: String) {
     Surface(
         modifier = Modifier.weight(1f),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),

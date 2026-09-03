@@ -30,6 +30,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.KSerializer
@@ -198,25 +199,25 @@ class BackendApi(
 
     /** Thin holder that turns a transport result into typed data. */
     private inner class Response(private val result: AppResult<JsonElement>) {
-        fun <T> asData(serializer: KSerializer<T>): AppResult<T> = when (result) {
+        fun <T> asData(serializer: KSerializer<T>): AppResult<T> = when (val r = result) {
             is AppResult.Success -> runCatching {
-                AppResult.Success(json.decodeFromJsonElement(serializer, result.data))
+                AppResult.Success(json.decodeFromJsonElement(serializer, r.data))
             }.getOrElse { AppResult.Error(AppError.from(it)) }
-            is AppResult.Error -> AppResult.Error(result.error)
+            is AppResult.Error -> AppResult.Error(r.error)
         }
 
-        fun <T> asList(serializer: KSerializer<T>): AppResult<List<T>> = when (result) {
+        fun <T> asList(serializer: KSerializer<T>): AppResult<List<T>> = when (val r = result) {
             is AppResult.Success -> runCatching {
-                val arr = result.data as? JsonArray
+                val arr = r.data as? JsonArray
                     ?: throw IllegalArgumentException("Expected a JSON array")
                 AppResult.Success(arr.map { json.decodeFromJsonElement(serializer, it) })
             }.getOrElse { AppResult.Error(AppError.from(it)) }
-            is AppResult.Error -> AppResult.Error(result.error)
+            is AppResult.Error -> AppResult.Error(r.error)
         }
 
-        fun unit(): AppResult<Unit> = when (result) {
+        fun unit(): AppResult<Unit> = when (val r = result) {
             is AppResult.Success -> AppResult.Success(Unit)
-            is AppResult.Error -> AppResult.Error(result.error)
+            is AppResult.Error -> AppResult.Error(r.error)
         }
     }
 }
