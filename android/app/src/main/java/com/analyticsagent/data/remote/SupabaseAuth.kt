@@ -60,7 +60,7 @@ class SupabaseAuth {
                 setBody(body)
             }
             val text = resp.bodyAsText()
-            if (!resp.status.isSuccess()) {
+            if (resp.status.value !in 200..299) {
                 AppResult.Error(
                     AppError(
                         code = if (resp.status.value == 400) "INVALID_CREDENTIALS" else "AUTH_${resp.status.value}",
@@ -95,7 +95,7 @@ class SupabaseAuth {
                 header("Authorization", "Bearer $token")
                 header("apikey", AppConfig.supabasePublishableKey)
             }
-            resp.status.isSuccess()
+            resp.status.value in 200..299
         } catch (e: Exception) {
             false
         }

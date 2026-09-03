@@ -131,4 +131,8 @@ fun AppFrame(
 }
 
 @Composable
+<<<<<<< HEAD
 internal fun currentContainer() = (LocalContext.current.applicationContext as? com.analyticsagent.AnalyticsApplication)?.container
+=======
+internal fun currentContainer() = (LocalContext.current.applicationContext as? com.analyticsagent.AnalyticsApplication)?.container
+>>>>>>> a812ebdc81d636000f9284bbd38f3a68b7af3946
