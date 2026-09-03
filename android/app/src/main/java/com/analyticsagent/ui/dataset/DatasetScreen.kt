@@ -208,9 +208,9 @@ private fun DatasetCard(dataset: Dataset, onViewSchema: () -> Unit, onViewQualit
             }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatBox("Rows", dataset.rowCount.toString())
-                StatBox("Columns", dataset.columnCount.toString())
-                StatBox("Date range", DatasetInfo.dateRange(dataset))
+                StatBox("Rows", dataset.rowCount.toString(), Modifier.weight(1f))
+                StatBox("Columns", dataset.columnCount.toString(), Modifier.weight(1f))
+                StatBox("Date range", DatasetInfo.dateRange(dataset), Modifier.weight(1f))
             }
             val score = DatasetInfo.qualityScore(dataset)
             if (score != null) {
@@ -238,9 +238,9 @@ private fun DatasetCard(dataset: Dataset, onViewSchema: () -> Unit, onViewQualit
 }
 
 @Composable
-private fun StatBox(label: String, value: String) {
+private fun StatBox(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         shape = MaterialTheme.shapes.small,
     ) {

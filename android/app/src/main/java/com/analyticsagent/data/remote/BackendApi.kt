@@ -155,7 +155,7 @@ class BackendApi(
         return try {
             val resp = block()
             val text = resp.bodyAsText()
-            if (!resp.status.isSuccess()) {
+            if (resp.status.value !in 200..299) {
                 AppResult.Error(errorFromStatus(resp.status.value, text))
             } else if (text.isBlank()) {
                 AppResult.Success(JsonNull)
@@ -198,25 +198,34 @@ class BackendApi(
 
     /** Thin holder that turns a transport result into typed data. */
     private inner class Response(private val result: AppResult<JsonElement>) {
-        fun <T> asData(serializer: KSerializer<T>): AppResult<T> = when (result) {
-            is AppResult.Success -> runCatching {
-                AppResult.Success(json.decodeFromJsonElement(serializer, result.data))
-            }.getOrElse { AppResult.Error(AppError.from(it)) }
-            is AppResult.Error -> AppResult.Error(result.error)
+        fun <T> asData(serializer: KSerializer<T>): AppResult<T> {
+            val r = result
+            return when (r) {
+                is AppResult.Success -> runCatching {
+                    AppResult.Success(json.decodeFromJsonElement(serializer, r.data))
+                }.getOrElse { AppResult.Error(AppError.from(it)) }
+                is AppResult.Error -> AppResult.Error(r.error)
+            }
         }
 
-        fun <T> asList(serializer: KSerializer<T>): AppResult<List<T>> = when (result) {
-            is AppResult.Success -> runCatching {
-                val arr = result.data as? JsonArray
-                    ?: throw IllegalArgumentException("Expected a JSON array")
-                AppResult.Success(arr.map { json.decodeFromJsonElement(serializer, it) })
-            }.getOrElse { AppResult.Error(AppError.from(it)) }
-            is AppResult.Error -> AppResult.Error(result.error)
+        fun <T> asList(serializer: KSerializer<T>): AppResult<List<T>> {
+            val r = result
+            return when (r) {
+                is AppResult.Success -> runCatching {
+                    val arr = r.data as? JsonArray
+                        ?: throw IllegalArgumentException("Expected a JSON array")
+                    AppResult.Success(arr.map { json.decodeFromJsonElement(serializer, it) })
+                }.getOrElse { AppResult.Error(AppError.from(it)) }
+                is AppResult.Error -> AppResult.Error(r.error)
+            }
         }
 
-        fun unit(): AppResult<Unit> = when (result) {
-            is AppResult.Success -> AppResult.Success(Unit)
-            is AppResult.Error -> AppResult.Error(result.error)
+        fun unit(): AppResult<Unit> {
+            val r = result
+            return when (r) {
+                is AppResult.Success -> AppResult.Success(Unit)
+                is AppResult.Error -> AppResult.Error(r.error)
+            }
         }
     }
 }
