@@ -7,6 +7,13 @@ import kotlinx.serialization.json.JsonElement
 /** DTOs mirror the analytics backend REST contract (see backend/app/api). */
 
 @Serializable
+enum class AnalysisMode {
+    @SerialName("excel") EXCEL,
+    @SerialName("powerbi") POWER_BI,
+    @SerialName("sql") SQL
+}
+
+@Serializable
 data class MeResponse(
     val id: String = "",
     val email: String = "",
@@ -150,6 +157,59 @@ data class DaxMeasure(
 }
 
 @Serializable
+data class ExcelFormula(
+    val name: String,
+    val category: String = "Dynamic Array",
+    val formula: String,
+    @SerialName("target_range") val targetRange: String = "",
+    val explanation: String = "",
+    @SerialName("example_output") val exampleOutput: String = "",
+    @SerialName("m_code") val mCode: String? = null,
+    @SerialName("vba_code") val vbaCode: String? = null,
+)
+
+@Serializable
+data class SqlQuery(
+    val title: String,
+    @SerialName("query_type") val queryType: String = "Query",
+    val dialect: String = "PostgreSQL",
+    @SerialName("sql_code") val sqlCode: String,
+    val explanation: String = "",
+    @SerialName("expected_columns") val expectedColumns: List<String> = emptyList(),
+    @SerialName("indexing_suggestion") val indexingSuggestion: String? = null,
+)
+
+@Serializable
+data class StarTable(
+    val name: String,
+    val type: String,
+    @SerialName("primary_key") val primaryKey: String? = null,
+    val columns: List<String> = emptyList(),
+    val description: String = "",
+)
+
+@Serializable
+data class StarRelationship(
+    @SerialName("from_table") val fromTable: String,
+    @SerialName("from_column") val fromColumn: String,
+    @SerialName("to_table") val toTable: String,
+    @SerialName("to_column") val toColumn: String,
+    val cardinality: String = "1:N",
+    @SerialName("cross_filter_direction") val crossFilterDirection: String = "Single",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class StarSchemaModel(
+    @SerialName("model_name") val modelName: String = "Star Schema",
+    @SerialName("fact_tables") val factTables: List<StarTable> = emptyList(),
+    @SerialName("dimension_tables") val dimensionTables: List<StarTable> = emptyList(),
+    val relationships: List<StarRelationship> = emptyList(),
+    @SerialName("date_table_dax") val dateTableDax: String? = null,
+    @SerialName("modeling_recommendations") val modelingRecommendations: List<String> = emptyList(),
+)
+
+@Serializable
 data class Quality(
     val id: String? = null,
     val score: Double = 0.0,
@@ -201,6 +261,9 @@ data class RunDetail(
     val metrics: List<Metric> = emptyList(),
     val insights: List<Insight> = emptyList(),
     @SerialName("dax_measures") val daxMeasures: List<DaxMeasure> = emptyList(),
+    @SerialName("excel_formulas") val excelFormulas: List<ExcelFormula> = emptyList(),
+    @SerialName("sql_queries") val sqlQueries: List<SqlQuery> = emptyList(),
+    @SerialName("star_schema") val starSchema: StarSchemaModel? = null,
     @SerialName("data_quality") val dataQuality: Quality? = null,
     val artifacts: List<Artifact> = emptyList(),
 ) {
@@ -210,53 +273,21 @@ data class RunDetail(
 }
 
 @Serializable
-data class SqlConnector(
-    val id: String,
-    val name: String,
-    val engine: String = "postgres",
-    val status: String = "ready",
+data class DirectAnalysisResponse(
+    val ok: Boolean = true,
+    @SerialName("run_id") val runId: String = "",
+    val mode: String = "powerbi",
+    @SerialName("file_name") val fileName: String = "",
+    @SerialName("row_count") val rowCount: Int = 0,
+    @SerialName("column_count") val columnCount: Int = 0,
+    val columns: List<String> = emptyList(),
+    @SerialName("quality_score") val qualityScore: Double = 95.0,
+    @SerialName("executive_summary") val executiveSummary: String = "",
+    @SerialName("key_findings") val keyFindings: List<String> = emptyList(),
+    @SerialName("dashboard_image_base64") val dashboardImageBase64: String? = null,
+    @SerialName("dax_measures") val daxMeasures: List<DaxMeasure> = emptyList(),
+    @SerialName("star_schema") val starSchema: StarSchemaModel? = null,
+    @SerialName("excel_formulas") val excelFormulas: List<ExcelFormula> = emptyList(),
+    @SerialName("sql_queries") val sqlQueries: List<SqlQuery> = emptyList(),
+    val recommendations: List<String> = emptyList(),
 )
-
-@Serializable
-data class FileValidateResponse(
-    val ok: Boolean,
-    val bucket: String,
-    @SerialName("storage_path") val storagePath: String,
-    @SerialName("file_name") val fileName: String,
-    @SerialName("file_size") val fileSize: Long,
-    @SerialName("mime_type") val mimeType: String,
-    @SerialName("max_size_bytes") val maxSizeBytes: Long,
-    val extension: String,
-)
-
-@Serializable
-data class SignedUrlResponse(
-    @SerialName("signed_url") val signedUrl: String,
-    @SerialName("file_name") val fileName: String,
-    @SerialName("mime_type") val mimeType: String? = null,
-    @SerialName("file_size") val fileSize: Long = 0,
-    @SerialName("expires_in_seconds") val expiresInSeconds: Int = 300,
-)
-
-@Serializable
-data class CreateProjectRequest(val name: String, val description: String = "")
-
-@Serializable
-data class RegisterDatasetRequest(
-    @SerialName("project_id") val projectId: String,
-    val name: String,
-    @SerialName("source_type") val sourceType: String,
-    @SerialName("storage_path") val storagePath: String? = null,
-    @SerialName("file_size") val fileSize: Long = 0,
-    @SerialName("mime_type") val mimeType: String? = null,
-)
-
-@Serializable
-data class CreateRunRequest(
-    @SerialName("project_id") val projectId: String,
-    @SerialName("dataset_id") val datasetId: String? = null,
-    val prompt: String,
-)
-
-@Serializable
-data class OkResponse(val ok: Boolean, val projectId: String? = null, val runId: String? = null)

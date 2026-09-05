@@ -1,23 +1,49 @@
 package com.analyticsagent.ui.prompt
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.DataObject
+import androidx.compose.material.icons.filled.Dataset
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -25,13 +51,20 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.analyticsagent.AppContainer
+import com.analyticsagent.domain.model.AnalysisMode
 import com.analyticsagent.navigation.Routes
 import com.analyticsagent.ui.components.ErrorBox
 import com.analyticsagent.ui.components.LoadingBox
@@ -52,7 +85,12 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Report Prompt") },
+                title = {
+                    Column {
+                        Text("AI Data Analyst", fontWeight = FontWeight.Bold)
+                        Text("Analysis Spec & Mode", style = MaterialTheme.typography.labelSmall, color = Color(0xFF00F2FE))
+                    }
+                },
                 navigationIcon = { TextButton(onClick = { nav.popBackStack() }) { Text("Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
@@ -60,40 +98,78 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (state.loading) {
-                item { LoadingBox("Loading…") }
+                item { LoadingBox("Loading project workspace…") }
             } else {
+                // 1. Mode Switcher (Option 1: Excel | Option 2: PowerBI | Option 3: SQL)
                 item {
-                    SectionHeader(
-                        "What should I analyze?",
-                        "Your prompt controls the report sections, KPIs, comparisons and visuals. "
-                            + "Skills provide the analytical capability; your prompt is the specification.",
+                    Text(
+                        "1. Select Analysis Mode",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    ModeSelectorTabs(
+                        selectedMode = state.selectedMode,
+                        onModeSelected = { vm.setMode(it) }
                     )
                 }
+
+                // 2. Mode Capability Description Banner
                 item {
+                    ModeBanner(mode = state.selectedMode)
+                }
+
+                // 3. Prompt Input Box
+                item {
+                    SectionHeader(
+                        "2. Business Prompt & Questions",
+                        "Tell the AI what dimensions, metrics, time comparisons, and models you need.",
+                    )
+                    Spacer(Modifier.height(6.dp))
                     OutlinedTextField(
                         value = state.prompt,
                         onValueChange = vm::onPromptChange,
                         placeholder = {
-                            Text("Example: Analyze monthly revenue and growth. Segment by region and category. "
-                                + "Show top 10 products, customer repeat rate, and forecast the next quarter. "
-                                + "Highlight risks and give recommendations.")
+                            Text(
+                                when (state.selectedMode) {
+                                    AnalysisMode.EXCEL -> "E.g., Generate dynamic array formulas (LET, LAMBDA, XLOOKUP), Power Query M-code, and automated Pivot Table macro."
+                                    AnalysisMode.POWER_BI -> "E.g., Architect a Star Schema model, generate YoY/YTD DAX time-intelligence measures, and design an executive KPI dashboard."
+                                    AnalysisMode.SQL -> "E.g., Write DDL schemas, Window function queries for MoM growth & running totals, and index recommendations."
+                                }
+                            )
                         },
-                        minLines = 8,
+                        minLines = 6,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF00F2FE),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
                     )
                 }
+
+                // 4. Quick Suggestion Chips based on Mode
+                item {
+                    Text("Quick Prompt Ideas", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    PromptSuggestionChips(mode = state.selectedMode, onSelect = { vm.applyPromptTemplate(it) })
+                }
+
                 if (state.datasets.isEmpty()) {
                     item {
-                        ErrorBox("No dataset uploaded yet. Go back and upload a CSV/Excel file first.")
+                        ErrorBox("No dataset found. Please upload a CSV/Excel file in the project first.")
                     }
                 }
                 if (state.error != null) {
                     item { ErrorBox(state.error!!) }
                 }
+
+                // 5. Submit Button
                 item {
                     Button(
                         onClick = {
@@ -102,41 +178,242 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
                             }
                         },
                         enabled = !state.submitting && state.prompt.isNotBlank() && state.datasets.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00F2FE),
+                            contentColor = Color(0xFF0A0E17)
+                        )
                     ) {
                         if (state.submitting) {
-                            CircularProgressIndicator(Modifier.padding(0.dp).height(20.dp),
-                                strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                            CircularProgressIndicator(
+                                Modifier.height(22.dp).width(22.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF0A0E17)
+                            )
                         } else {
-                            Text("Generate Analysis")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoGraph, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Generate ${when (state.selectedMode) {
+                                        AnalysisMode.EXCEL -> "Excel Report & Formulas"
+                                        AnalysisMode.POWER_BI -> "Power BI DAX & Data Model"
+                                        AnalysisMode.SQL -> "SQL Queries & Schemas"
+                                    }}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
                         }
                     }
                 }
+
+                // 6. Prompt History
                 if (state.promptHistory.isNotEmpty()) {
                     item {
-                        Text("Prompt History", style = MaterialTheme.typography.titleLarge,
-                             fontWeight = FontWeight.Bold)
+                        Text(
+                            "Recent Prompts",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     items(state.promptHistory, key = { it.runId }) { item ->
                         Card(
                             onClick = { vm.usePrompt(item.prompt) },
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         ) {
                             Column(Modifier.padding(12.dp)) {
-                                Text("\"${item.prompt.take(90)}${if (item.prompt.length > 90) "…" else ""}\"",
-                                     style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    "\"${item.prompt.take(90)}${if (item.prompt.length > 90) "…" else ""}\"",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                                 Spacer(Modifier.height(4.dp))
-                                Row {
-                                    Text("Run: ${item.status} · ${Formatters.formatDate(item.createdAt)}",
-                                         style = MaterialTheme.typography.labelSmall,
-                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                                Text(
+                                    "Status: ${item.status} · ${Formatters.formatDate(item.createdAt)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ModeSelectorTabs(
+    selectedMode: AnalysisMode,
+    onModeSelected: (AnalysisMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF131A29))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        ModeTabItem(
+            title = "1. Excel",
+            icon = Icons.Default.TableChart,
+            isSelected = selectedMode == AnalysisMode.EXCEL,
+            activeColor = Color(0xFF107C41),
+            onClick = { onModeSelected(AnalysisMode.EXCEL) },
+            modifier = Modifier.weight(1f)
+        )
+        ModeTabItem(
+            title = "2. PowerBI",
+            icon = Icons.Default.AutoGraph,
+            isSelected = selectedMode == AnalysisMode.POWER_BI,
+            activeColor = Color(0xFFF2C811),
+            textColor = if (selectedMode == AnalysisMode.POWER_BI) Color(0xFF0A0E17) else Color.White,
+            onClick = { onModeSelected(AnalysisMode.POWER_BI) },
+            modifier = Modifier.weight(1f)
+        )
+        ModeTabItem(
+            title = "3. SQL",
+            icon = Icons.Default.Code,
+            isSelected = selectedMode == AnalysisMode.SQL,
+            activeColor = Color(0xFF00758F),
+            onClick = { onModeSelected(AnalysisMode.SQL) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ModeTabItem(
+    title: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    activeColor: Color,
+    textColor: Color = Color.White,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bgAnim by animateColorAsState(
+        targetValue = if (isSelected) activeColor else Color.Transparent,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "tabBg"
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgAnim)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (isSelected) textColor else Color(0xFF94A3B8),
+                modifier = Modifier.padding(end = 4.dp).height(16.dp).width(16.dp)
+            )
+            Text(
+                title,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 13.sp,
+                color = if (isSelected) textColor else Color(0xFF94A3B8)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModeBanner(mode: AnalysisMode) {
+    val (title, description, borderCol) = when (mode) {
+        AnalysisMode.EXCEL -> Triple(
+            "Excel Specialist Active",
+            "Generates LET/LAMBDA Dynamic Arrays, XLOOKUP formulas, Power Query (M-Code) ETL pipelines, and VBA Pivot Table automations.",
+            Color(0xFF107C41)
+        )
+        AnalysisMode.POWER_BI -> Triple(
+            "Power BI & DAX Architect Active",
+            "Designs Star Schema data models (Fact/Dim tables, 1:N cardinality), Time-Intelligence DAX measures, and high-res Dashboard visuals.",
+            Color(0xFFF2C811)
+        )
+        AnalysisMode.SQL -> Triple(
+            "SQL Data Analyst Active",
+            "Generates normalized DDL schemas, Window functions (LAG, LEAD, DENSE_RANK), Common Table Expressions (CTEs), and index strategies.",
+            Color(0xFF00F2FE)
+        )
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, borderCol.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF131A29)),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Lightbulb, contentDescription = null, tint = borderCol, modifier = Modifier.height(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = borderCol)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
+        }
+    }
+}
+
+@Composable
+private fun PromptSuggestionChips(
+    mode: AnalysisMode,
+    onSelect: (String) -> Unit
+) {
+    val chips = when (mode) {
+        AnalysisMode.EXCEL -> listOf(
+            "Dynamic Array Formulas & XLOOKUP",
+            "Power Query ETL M-Code Script",
+            "Automated VBA Pivot Dashboard Macro",
+            "Month-over-Month Growth & YoY Formula"
+        )
+        AnalysisMode.POWER_BI -> listOf(
+            "Star Schema & Relationship Model",
+            "YoY & YTD Time-Intelligence Measures",
+            "Pareto 80/20 & Top Product DAX",
+            "Executive KPI Matrix & Dashboard Spec"
+        )
+        AnalysisMode.SQL -> listOf(
+            "Window Functions (MoM Growth & Running Total)",
+            "DDL Table Schema with B-Tree Indexes",
+            "Pareto 80/20 CTE Ranking Query",
+            "Cohort Retention & Churn Analysis Query"
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        chips.forEach { text ->
+            SuggestionChip(
+                onClick = { onSelect(text) },
+                label = { Text(text, fontSize = 12.sp) },
+                shape = RoundedCornerShape(8.dp),
+                colors = SuggestionChipDefaults.suggestionChipColors(
+                    containerColor = Color(0xFF131A29),
+                    labelColor = Color(0xFF00F2FE)
+                ),
+                border = SuggestionChipDefaults.suggestionChipBorder(
+                    enabled = true,
+                    borderColor = Color(0xFF1E293B)
+                )
+            )
         }
     }
 }

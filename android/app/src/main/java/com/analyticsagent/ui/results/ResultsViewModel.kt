@@ -11,12 +11,15 @@ import kotlinx.coroutines.launch
 
 enum class ResultsTab(val label: String) {
     Overview("Overview"),
-    Insights("Insights"),
-    Metrics("Metrics"),
-    Report("Report"),
-    Dax("DAX"),
     Dashboard("Dashboard"),
-    Quality("Data Quality"),
+    Dax("DAX"),
+    StarSchema("Data Model"),
+    ExcelFormulas("Excel"),
+    SqlQueries("SQL"),
+    Insights("Insights"),
+    Metrics("KPIs"),
+    Report("Report"),
+    Quality("Quality"),
 }
 
 data class ResultsUiState(

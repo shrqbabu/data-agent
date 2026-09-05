@@ -8,13 +8,16 @@ import com.analyticsagent.AppContainer
 import com.analyticsagent.ui.dashboard.DashboardScreen
 import com.analyticsagent.ui.dataset.DatasetScreen
 import com.analyticsagent.ui.dax.DaxScreen
+import com.analyticsagent.ui.excel.ExcelFormulaScreen
 import com.analyticsagent.ui.newproject.NewProjectScreen
 import com.analyticsagent.ui.progress.AnalysisProgressScreen
 import com.analyticsagent.ui.projects.ProjectsScreen
 import com.analyticsagent.ui.prompt.ReportPromptScreen
 import com.analyticsagent.ui.quality.DataQualityScreen
 import com.analyticsagent.ui.results.ResultsScreen
+import com.analyticsagent.ui.schema.StarSchemaScreen
 import com.analyticsagent.ui.settings.ProjectSettingsScreen
+import com.analyticsagent.ui.sql.SqlScreen
 
 @Composable
 fun AppNavHost(container: AppContainer) {

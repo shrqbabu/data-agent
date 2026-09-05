@@ -11,7 +11,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import artifacts, audit, auth, datasets, files, projects, runs, sql_connectors
+from app.api import (
+    artifacts,
+    audit,
+    auth,
+    datasets,
+    direct_analyze,
+    files,
+    projects,
+    runs,
+    sql_connectors,
+)
 from app.config import get_settings
 from app.jobs.manager import get_job_manager, init_job_manager
 
@@ -47,6 +57,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(direct_analyze.router)
 app.include_router(projects.router)
 app.include_router(datasets.router)
 app.include_router(files.router)

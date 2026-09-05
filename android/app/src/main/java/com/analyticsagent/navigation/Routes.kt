@@ -15,6 +15,9 @@ object Routes {
     const val RUN_RESULTS = "project/{projectId}/run/{runId}/results"
     const val DAX = "project/{projectId}/run/{runId}/dax"
     const val DASHBOARD = "project/{projectId}/run/{runId}/dashboard"
+    const val STAR_SCHEMA = "project/{projectId}/run/{runId}/schema"
+    const val EXCEL_FORMULAS = "project/{projectId}/run/{runId}/excel"
+    const val SQL_QUERIES = "project/{projectId}/run/{runId}/sql"
     const val SETTINGS = "project/{projectId}/settings"
 
     fun project(id: String) = "project/$id"
@@ -24,6 +27,9 @@ object Routes {
     fun runResults(projectId: String, runId: String) = "project/$projectId/run/$runId/results"
     fun dax(projectId: String, runId: String) = "project/$projectId/run/$runId/dax"
     fun dashboard(projectId: String, runId: String) = "project/$projectId/run/$runId/dashboard"
+    fun starSchema(projectId: String, runId: String) = "project/$projectId/run/$runId/schema"
+    fun excelFormulas(projectId: String, runId: String) = "project/$projectId/run/$runId/excel"
+    fun sqlQueries(projectId: String, runId: String) = "project/$projectId/run/$runId/sql"
     fun settings(projectId: String) = "project/$projectId/settings"
 }
 
