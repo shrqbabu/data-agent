@@ -249,4 +249,32 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
+# ---------------------------------------------------------------------------
+# CI diagnostics: mirror Gradle output into GitHub check annotations so a
+# failing build is inspectable from the API / PR "Checks" tab, not only from
+# the raw Actions log archive.
+# ---------------------------------------------------------------------------
+ci_log=""
+if [ -n "${GITHUB_ACTIONS:-}" ] && [ -n "${RUNNER_TEMP:-}" ]; then
+    ci_log="${RUNNER_TEMP}/gradle-build.log"
+fi
+
+if [ -n "$ci_log" ]; then
+    { "$JAVACMD" "$@"; echo $? > "${ci_log}.status"; } 2>&1 | tee "$ci_log"
+    ci_status=$(cat "${ci_log}.status" 2>/dev/null || echo 1)
+    if [ "$ci_status" != "0" ]; then
+        ci_msg=$(
+            {
+                grep -E '^e: |^error: |^> Task .* FAILED' "$ci_log" | head -n 15
+                awk '/^\* What went wrong:/{flag=1} flag&&/^\* Try:/{flag=0} flag' "$ci_log" | head -n 20
+            } 2>/dev/null | head -n 30 | awk 'BEGIN{ORS="%0A"} {gsub(/%/,"%25"); sub(/\r$/,""); print}'
+        )
+        if [ -z "$ci_msg" ]; then
+            ci_msg=$(tail -n 15 "$ci_log" | awk 'BEGIN{ORS="%0A"} {gsub(/%/,"%25"); print}')
+        fi
+        printf '::error title=Gradle build failed (exit %s)::%s\n' "$ci_status" "$(printf '%s' "$ci_msg" | cut -c1-4000)"
+    fi
+    exit "$ci_status"
+fi
+
 exec "$JAVACMD" "$@"
