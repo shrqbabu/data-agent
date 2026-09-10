@@ -57,6 +57,10 @@ class ReportPromptViewModel(
         _state.value = _state.value.copy(selectedMode = mode)
     }
 
+    fun setPromptAndMode(promptText: String, mode: AnalysisMode) {
+        _state.value = _state.value.copy(prompt = promptText, selectedMode = mode, error = null)
+    }
+
     fun onPromptChange(v: String) {
         _state.value = _state.value.copy(prompt = v, error = null)
     }
@@ -83,7 +87,9 @@ class ReportPromptViewModel(
         val modePrefix = when (s.selectedMode) {
             AnalysisMode.EXCEL -> "[Mode: Excel] "
             AnalysisMode.POWER_BI -> "[Mode: PowerBI] "
-            AnalysisMode.SQL -> "[Mode: SQL] "
+            AnalysisMode.MYSQL -> "[Mode: MySQL] "
+            AnalysisMode.PYTHON -> "[Mode: Python] "
+            AnalysisMode.ALL -> "[Mode: All] "
         }
         val fullPrompt = if (s.prompt.startsWith("[Mode:")) s.prompt else "$modePrefix${s.prompt.trim()}"
 

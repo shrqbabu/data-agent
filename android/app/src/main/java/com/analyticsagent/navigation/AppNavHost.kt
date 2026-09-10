@@ -12,6 +12,7 @@ import com.analyticsagent.ui.excel.ExcelFormulaScreen
 import com.analyticsagent.ui.newproject.NewProjectScreen
 import com.analyticsagent.ui.progress.AnalysisProgressScreen
 import com.analyticsagent.ui.projects.ProjectsScreen
+import com.analyticsagent.ui.prompt.PromptLibraryScreen
 import com.analyticsagent.ui.prompt.ReportPromptScreen
 import com.analyticsagent.ui.quality.DataQualityScreen
 import com.analyticsagent.ui.results.ResultsScreen
@@ -62,6 +63,16 @@ fun AppNavHost(container: AppContainer) {
             val projectId = entry.arguments?.getString("projectId").orEmpty()
             val runId = entry.arguments?.getString("runId").orEmpty()
             DashboardScreen(container, nav, projectId, runId)
+        }
+        composable(Routes.PROMPT_LIBRARY) {
+            PromptLibraryScreen(
+                onPromptSelected = { prompt, mode ->
+                    nav.previousBackStackEntry?.savedStateHandle?.set("selected_prompt", prompt)
+                    nav.previousBackStackEntry?.savedStateHandle?.set("selected_mode", mode.name)
+                    nav.popBackStack()
+                },
+                onBack = { nav.popBackStack() }
+            )
         }
         composable(Routes.SETTINGS, arguments = listOf(ProjectArgs.projectId)) { entry ->
             val projectId = entry.arguments?.getString("projectId").orEmpty()

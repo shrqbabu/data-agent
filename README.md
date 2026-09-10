@@ -49,7 +49,7 @@ publishing to Power BI, general chat, and public user registration.
 
 ## Quick start
 
-See [docs/SETUP.md](docs/SETUP.md) for full steps, then:
+See the comprehensive [SETUP_README.md](SETUP_README.md) for full end-to-end setup and architecture, or [docs/SETUP.md](docs/SETUP.md):
 
 ```bash
 # Backend

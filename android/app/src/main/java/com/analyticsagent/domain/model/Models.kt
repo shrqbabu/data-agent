@@ -10,7 +10,9 @@ import kotlinx.serialization.json.JsonElement
 enum class AnalysisMode {
     @SerialName("excel") EXCEL,
     @SerialName("powerbi") POWER_BI,
-    @SerialName("sql") SQL
+    @SerialName("mysql") MYSQL,
+    @SerialName("python") PYTHON,
+    @SerialName("all") ALL,
 }
 
 @Serializable
@@ -263,6 +265,7 @@ data class RunDetail(
     @SerialName("dax_measures") val daxMeasures: List<DaxMeasure> = emptyList(),
     @SerialName("excel_formulas") val excelFormulas: List<ExcelFormula> = emptyList(),
     @SerialName("sql_queries") val sqlQueries: List<SqlQuery> = emptyList(),
+    @SerialName("python_scripts") val pythonScripts: List<PythonScript> = emptyList(),
     @SerialName("star_schema") val starSchema: StarSchemaModel? = null,
     @SerialName("data_quality") val dataQuality: Quality? = null,
     val artifacts: List<Artifact> = emptyList(),
@@ -271,6 +274,14 @@ data class RunDetail(
     val reportArtifact: Artifact? get() = artifacts.firstOrNull { it.artifactType == "report" }
     val daxArtifact: Artifact? get() = artifacts.firstOrNull { it.artifactType == "dax_file" }
 }
+
+@Serializable
+data class PythonScript(
+    val title: String,
+    val purpose: String,
+    @SerialName("python_code") val pythonCode: String,
+    val libraries: List<String> = emptyList(),
+)
 
 @Serializable
 data class DirectAnalysisResponse(
@@ -289,5 +300,6 @@ data class DirectAnalysisResponse(
     @SerialName("star_schema") val starSchema: StarSchemaModel? = null,
     @SerialName("excel_formulas") val excelFormulas: List<ExcelFormula> = emptyList(),
     @SerialName("sql_queries") val sqlQueries: List<SqlQuery> = emptyList(),
+    @SerialName("python_scripts") val pythonScripts: List<PythonScript> = emptyList(),
     val recommendations: List<String> = emptyList(),
 )

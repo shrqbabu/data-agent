@@ -18,7 +18,12 @@ object Routes {
     const val STAR_SCHEMA = "project/{projectId}/run/{runId}/schema"
     const val EXCEL_FORMULAS = "project/{projectId}/run/{runId}/excel"
     const val SQL_QUERIES = "project/{projectId}/run/{runId}/sql"
+    const val PROMPT_LIBRARY = "prompt-library"
+    const val SUMMARY_PREVIEW = "summary-preview"
     const val SETTINGS = "project/{projectId}/settings"
+
+    fun promptLibrary() = "prompt-library"
+    fun summaryPreview() = "summary-preview"
 
     fun project(id: String) = "project/$id"
     fun quality(projectId: String, datasetId: String) = "project/$projectId/dataset/$datasetId/quality"

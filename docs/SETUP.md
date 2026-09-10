@@ -1,5 +1,7 @@
 # Setup
 
+> **Note**: For the complete, end-to-end guide covering the multi-stack engine (Excel, PowerBI, MySQL, Python, All) and executive PDF generation, please refer to [SETUP_README.md](../SETUP_README.md).
+
 ## 1. Supabase project
 1. Create a project at https://supabase.com (or `supabase init` this repo).
 2. Apply migrations (`supabase/migrations/*.sql`) — `supabase db push` or via the

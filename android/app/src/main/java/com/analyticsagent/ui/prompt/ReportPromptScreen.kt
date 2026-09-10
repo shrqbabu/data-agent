@@ -82,6 +82,21 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
 
     LaunchedEffect(projectId) { vm.load(projectId) }
 
+    // Listen for template selection from Enterprise Prompt Library
+    val navBackStackEntry = nav.currentBackStackEntry
+    LaunchedEffect(navBackStackEntry) {
+        val selectedPrompt = navBackStackEntry?.savedStateHandle?.get<String>("selected_prompt")
+        val selectedModeStr = navBackStackEntry?.savedStateHandle?.get<String>("selected_mode")
+        if (!selectedPrompt.isNullOrBlank()) {
+            val mode = selectedModeStr?.let {
+                try { AnalysisMode.valueOf(it) } catch (_: Exception) { null }
+            } ?: AnalysisMode.POWER_BI
+            vm.setPromptAndMode(selectedPrompt, mode)
+            navBackStackEntry.savedStateHandle.remove<String>("selected_prompt")
+            navBackStackEntry.savedStateHandle.remove<String>("selected_mode")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -124,6 +139,31 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
                     ModeBanner(mode = state.selectedMode)
                 }
 
+                // Enterprise Prompt Library Access Card
+                item {
+                    Card(
+                        onClick = { nav.navigate(Routes.PROMPT_LIBRARY) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFF00F2FE).copy(alpha = 0.5f), RoundedCornerShape(10.dp)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF131A29)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFF00F2FE), modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Browse Enterprise Prompt Library", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF00F2FE))
+                                Text("Pre-built real corporate templates (C-Suite, Retail, P&L, HR, Ops)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            }
+                            Text("Open", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF00F2FE))
+                        }
+                    }
+                }
+
                 // 3. Prompt Input Box
                 item {
                     SectionHeader(
@@ -139,7 +179,9 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
                                 when (state.selectedMode) {
                                     AnalysisMode.EXCEL -> "E.g., Generate dynamic array formulas (LET, LAMBDA, XLOOKUP), Power Query M-code, and automated Pivot Table macro."
                                     AnalysisMode.POWER_BI -> "E.g., Architect a Star Schema model, generate YoY/YTD DAX time-intelligence measures, and design an executive KPI dashboard."
-                                    AnalysisMode.SQL -> "E.g., Write DDL schemas, Window function queries for MoM growth & running totals, and index recommendations."
+                                    AnalysisMode.MYSQL -> "E.g., Write MySQL 8.0+ DDL schemas, Window function queries for MoM growth & running totals, and index recommendations."
+                                    AnalysisMode.PYTHON -> "E.g., Write Pandas deduplication & cleaning pipeline, NumPy metric calculations, and Matplotlib/Seaborn visualization script."
+                                    AnalysisMode.ALL -> "E.g., Full multi-stack report: Generate Excel formulas, Power BI DAX & Star Schema, MySQL queries, and Python analysis scripts."
                                 }
                             )
                         },
@@ -201,10 +243,12 @@ fun ReportPromptScreen(container: AppContainer, nav: NavController, projectId: S
                                     "Generate ${when (state.selectedMode) {
                                         AnalysisMode.EXCEL -> "Excel Report & Formulas"
                                         AnalysisMode.POWER_BI -> "Power BI DAX & Data Model"
-                                        AnalysisMode.SQL -> "SQL Queries & Schemas"
+                                        AnalysisMode.MYSQL -> "MySQL Queries & Schemas"
+                                        AnalysisMode.PYTHON -> "Python Analysis & Plot Scripts"
+                                        AnalysisMode.ALL -> "Complete Multi-Stack Deliverables (All 4)"
                                     }}",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
+                                    fontSize = 14.sp
                                 )
                             }
                         }
@@ -255,18 +299,18 @@ private fun ModeSelectorTabs(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF131A29))
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         ModeTabItem(
-            title = "1. Excel",
+            title = "1. Excel Sirf",
             icon = Icons.Default.TableChart,
             isSelected = selectedMode == AnalysisMode.EXCEL,
             activeColor = Color(0xFF107C41),
-            onClick = { onModeSelected(AnalysisMode.EXCEL) },
-            modifier = Modifier.weight(1f)
+            onClick = { onModeSelected(AnalysisMode.EXCEL) }
         )
         ModeTabItem(
             title = "2. PowerBI",
@@ -274,16 +318,28 @@ private fun ModeSelectorTabs(
             isSelected = selectedMode == AnalysisMode.POWER_BI,
             activeColor = Color(0xFFF2C811),
             textColor = if (selectedMode == AnalysisMode.POWER_BI) Color(0xFF0A0E17) else Color.White,
-            onClick = { onModeSelected(AnalysisMode.POWER_BI) },
-            modifier = Modifier.weight(1f)
+            onClick = { onModeSelected(AnalysisMode.POWER_BI) }
         )
         ModeTabItem(
-            title = "3. SQL",
+            title = "3. MySQL",
             icon = Icons.Default.Code,
-            isSelected = selectedMode == AnalysisMode.SQL,
+            isSelected = selectedMode == AnalysisMode.MYSQL,
             activeColor = Color(0xFF00758F),
-            onClick = { onModeSelected(AnalysisMode.SQL) },
-            modifier = Modifier.weight(1f)
+            onClick = { onModeSelected(AnalysisMode.MYSQL) }
+        )
+        ModeTabItem(
+            title = "4. Python",
+            icon = Icons.Default.DataObject,
+            isSelected = selectedMode == AnalysisMode.PYTHON,
+            activeColor = Color(0xFF3B82F6),
+            onClick = { onModeSelected(AnalysisMode.PYTHON) }
+        )
+        ModeTabItem(
+            title = "5. All (Sabko)",
+            icon = Icons.Default.AutoGraph,
+            isSelected = selectedMode == AnalysisMode.ALL,
+            activeColor = Color(0xFFA855F7),
+            onClick = { onModeSelected(AnalysisMode.ALL) }
         )
     }
 }
@@ -309,7 +365,7 @@ private fun ModeTabItem(
             .clip(RoundedCornerShape(8.dp))
             .background(bgAnim)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -317,7 +373,7 @@ private fun ModeTabItem(
                 icon,
                 contentDescription = null,
                 tint = if (isSelected) textColor else Color(0xFF94A3B8),
-                modifier = Modifier.padding(end = 4.dp).height(16.dp).width(16.dp)
+                modifier = Modifier.padding(end = 6.dp).height(16.dp).width(16.dp)
             )
             Text(
                 title,
@@ -333,19 +389,29 @@ private fun ModeTabItem(
 private fun ModeBanner(mode: AnalysisMode) {
     val (title, description, borderCol) = when (mode) {
         AnalysisMode.EXCEL -> Triple(
-            "Excel Specialist Active",
-            "Generates LET/LAMBDA Dynamic Arrays, XLOOKUP formulas, Power Query (M-Code) ETL pipelines, and VBA Pivot Table automations.",
+            "Excel Specialist (Sirf Excel)",
+            "Generates dynamic array formulas (LET, LAMBDA, XLOOKUP), Power Query (M-Code) ETL scripts, and automated Pivot Tables.",
             Color(0xFF107C41)
         )
         AnalysisMode.POWER_BI -> Triple(
-            "Power BI & DAX Architect Active",
+            "Power BI & DAX Architect",
             "Designs Star Schema data models (Fact/Dim tables, 1:N cardinality), Time-Intelligence DAX measures, and high-res Dashboard visuals.",
             Color(0xFFF2C811)
         )
-        AnalysisMode.SQL -> Triple(
-            "SQL Data Analyst Active",
-            "Generates normalized DDL schemas, Window functions (LAG, LEAD, DENSE_RANK), Common Table Expressions (CTEs), and index strategies.",
-            Color(0xFF00F2FE)
+        AnalysisMode.MYSQL -> Triple(
+            "MySQL Database Specialist",
+            "Generates MySQL 8.0+ DDL schemas with InnoDB indexes, Window functions (LAG, LEAD, running totals), and Common Table Expressions (CTEs).",
+            Color(0xFF00758F)
+        )
+        AnalysisMode.PYTHON -> Triple(
+            "Python Data Engineering & ML",
+            "Generates reproducible Pandas data cleaning & deduplication scripts, NumPy metric calculations, and Matplotlib/Seaborn visualization scripts.",
+            Color(0xFF3B82F6)
+        )
+        AnalysisMode.ALL -> Triple(
+            "Multi-Stack Comprehensive (All 4 Engines)",
+            "Generates EVERYTHING: Power BI DAX & Star Schema + Excel Dynamic Formulas + MySQL Queries + Python Analysis Scripts.",
+            Color(0xFFA855F7)
         )
     }
 
@@ -386,11 +452,22 @@ private fun PromptSuggestionChips(
             "Pareto 80/20 & Top Product DAX",
             "Executive KPI Matrix & Dashboard Spec"
         )
-        AnalysisMode.SQL -> listOf(
+        AnalysisMode.MYSQL -> listOf(
+            "MySQL 8.0+ DDL Schema with InnoDB Indexes",
             "Window Functions (MoM Growth & Running Total)",
-            "DDL Table Schema with B-Tree Indexes",
             "Pareto 80/20 CTE Ranking Query",
             "Cohort Retention & Churn Analysis Query"
+        )
+        AnalysisMode.PYTHON -> listOf(
+            "Pandas Cleaning & Deduplication Script",
+            "NumPy Financial KPI Aggregations",
+            "Matplotlib & Seaborn Dark Theme Visuals",
+            "IQR Outlier Detection & Moving Average"
+        )
+        AnalysisMode.ALL -> listOf(
+            "All-in-One: DAX + Excel + MySQL + Python",
+            "Full Corporate Data Stack Implementation",
+            "End-to-End Enterprise Analytics Pipeline"
         )
     }
 

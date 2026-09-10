@@ -37,20 +37,40 @@ from app.engine.schema_modeler import generate_star_schema
 from app.engine.skills import CustomerSkill, ForecastingSkill, InventorySkill, ProductSkill, SalesSkill, StatisticsSkill
 from app.engine.sql_generator import generate_sql_queries
 from app.engine.dashboard import build_dashboard_spec
+from app.engine.pdf_generator import generate_pdf_report
+from app.engine.python_generator import generate_python_scripts
 
 router = APIRouter(prefix="/api/v1/analyze", tags=["direct-analysis"])
+
+# In-memory storage for generated PDFs for direct download
+_PDF_CACHE: Dict[str, bytes] = {}
+
+
+@router.get("/pdf/{run_id}")
+async def download_analysis_pdf(run_id: str):
+    """Download compiled Executive Analytics PDF for a given run ID."""
+    pdf_bytes = _PDF_CACHE.get(run_id)
+    if not pdf_bytes:
+        raise HTTPException(status_code=404, detail="PDF report not found or expired for this run.")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="Executive_Analytics_Report_{run_id[:8]}.pdf"'},
+    )
 
 
 @router.post("/direct")
 async def analyze_dataset_direct(
     file: UploadFile = File(...),
     prompt: str = Form(default="Analyze dataset, generate executive summary, KPI metrics, and key measures."),
-    mode: str = Form(default="powerbi"),  # excel | powerbi | sql
+    mode: str = Form(default="all"),  # excel | powerbi | mysql | sql | python | all
+    action: str = Form(default="full"),   # preview | full
 ) -> Dict[str, Any]:
-    """Instant analysis of uploaded CSV/Excel with mode selection."""
+    """Instant analysis of uploaded CSV/Excel with mode selection (Excel, PowerBI, MySQL, Python, All)."""
     mode_normalized = mode.lower().strip()
-    if mode_normalized not in ("excel", "powerbi", "sql"):
-        mode_normalized = "powerbi"
+    valid_modes = ("excel", "powerbi", "mysql", "sql", "python", "all")
+    if mode_normalized not in valid_modes:
+        mode_normalized = "all"
 
     # Read uploaded file content
     contents = await file.read()
@@ -99,7 +119,45 @@ async def analyze_dataset_direct(
     ctx.schema_model = build_schema_model(df)
     ctx.quality = assess_quality(df, ctx.schema_model)
 
-    # 2. Plan & Registry
+    total_rows = int(len(df))
+    dup_rows = int(df.duplicated().sum())
+    unique_recs = total_rows - dup_rows
+    dup_pct = round((dup_rows / total_rows * 100), 2) if total_rows > 0 else 0.0
+    quality_val = ctx.quality.score if ctx.quality else 95.0
+
+    # If preview requested, return initial AI summary & deduplication health preview immediately
+    if action.lower().strip() == "preview":
+        col_names = [c["name"] for c in ctx.schema_model.tables.get("data", [])]
+        preview_summary = (
+            f"Dataset '{filename}' successfully ingested with {total_rows:,} records across {len(col_names)} columns. "
+            f"Data integrity inspection identified {unique_recs:,} unique records and {dup_rows:,} duplicate rows ({dup_pct}% duplication). "
+            f"Overall dataset health rating stands at {quality_val:.1f}%. "
+            f"Ready to synthesize verified measures, data modeling, and executive dashboard PDF."
+        )
+        preview_findings = [
+            f"Total record volume: {total_rows:,} rows; Distinct unique entities: {unique_recs:,}.",
+            f"Deduplication status: {dup_rows:,} exact duplicate rows identified for removal/consolidation.",
+            f"Schema structure: {len(ctx.schema_model.numeric_columns)} numeric metrics, {len(ctx.schema_model.categorical_columns)} categorical dimensions, {len(ctx.schema_model.date_columns)} temporal date axes.",
+            f"Data quality rating: {quality_val:.1f}% calculated across completeness, uniqueness, and consistency."
+        ]
+        return {
+            "ok": True,
+            "action": "preview",
+            "run_id": run_id,
+            "mode": mode_normalized,
+            "file_name": filename,
+            "row_count": total_rows,
+            "column_count": len(df.columns),
+            "columns": col_names,
+            "duplicate_rows": dup_rows,
+            "unique_records": unique_recs,
+            "duplicates_percentage": dup_pct,
+            "quality_score": quality_val,
+            "executive_summary": preview_summary,
+            "key_findings": preview_findings,
+        }
+
+    # 2. Plan & Registry (Full Execution)
     llm = LLMClient()
     ctx.plan = build_plan(prompt, ctx.schema_model, llm)
     registry = MetricRegistry()
@@ -127,19 +185,36 @@ async def analyze_dataset_direct(
     dashboard_bytes = render_dashboard(ctx.dashboard_spec, registry)
     dashboard_base64 = base64.b64encode(dashboard_bytes).decode("utf-8")
 
-    # 6. Mode-Specific Artifact Generation
+    # 6. Mode-Specific Artifact Generation (Excel, PowerBI, MySQL, Python, All)
     dax_measures = []
     star_schema = None
     excel_formulas = []
     sql_queries = []
+    python_scripts = []
 
-    if mode_normalized == "powerbi":
+    if mode_normalized in ("powerbi", "all"):
         dax_measures = [dm.__dict__ for dm in generate_dax(registry, ctx.schema_model)]
         star_schema = generate_star_schema(ctx.schema_model)
-    elif mode_normalized == "excel":
+    if mode_normalized in ("excel", "all"):
         excel_formulas = generate_excel_formulas(registry, ctx.schema_model, prompt)
-    elif mode_normalized == "sql":
+    if mode_normalized in ("mysql", "sql", "all"):
         sql_queries = generate_sql_queries(registry, ctx.schema_model, prompt)
+    if mode_normalized in ("python", "all"):
+        python_scripts = generate_python_scripts(registry, ctx.schema_model, prompt)
+
+    # 7. Compile Final Executive Report & Suggested Dashboard PDF
+    pdf_bytes = generate_pdf_report(
+        dataset_name=filename,
+        total_rows=total_rows,
+        unique_records=unique_recs,
+        duplicate_rows=dup_rows,
+        quality_score=quality_val,
+        report_data=ctx.report,
+        dashboard_png_bytes=dashboard_bytes,
+        prompt=prompt,
+    )
+    _PDF_CACHE[run_id] = pdf_bytes
+    pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
     # Format KPI Cards for UI
     kpi_cards = []
@@ -155,24 +230,31 @@ async def analyze_dataset_direct(
 
     return {
         "ok": True,
+        "action": "full",
         "run_id": run_id,
         "mode": mode_normalized,
         "file_name": filename,
-        "row_count": len(df),
+        "row_count": total_rows,
         "column_count": len(df.columns),
         "columns": [c["name"] for c in ctx.schema_model.tables.get("data", [])],
-        "quality_score": ctx.quality.score if ctx.quality else 95.0,
+        "duplicate_rows": dup_rows,
+        "unique_records": unique_recs,
+        "duplicates_percentage": dup_pct,
+        "quality_score": quality_val,
         "executive_summary": ctx.report.get("executive_summary", "Comprehensive analysis performed successfully."),
         "key_findings": ctx.report.get("key_findings", []),
         "kpi_cards": kpi_cards,
         "dashboard_image_base64": dashboard_base64,
-        # Mode-specific outputs
+        "pdf_base64": pdf_base64,
+        "pdf_download_url": f"/api/v1/analyze/pdf/{run_id}",
+        # Mode-specific outputs (interactively rendered in App UI)
         "dax_measures": dax_measures,
         "star_schema": star_schema,
         "excel_formulas": excel_formulas,
         "sql_queries": sql_queries,
+        "python_scripts": python_scripts,
         "recommendations": ctx.report.get("recommendations", [
             "Leverage the generated measures/queries in your production workflow.",
             "Verify edge cases against seasonal anomalies."
-        ])
+        ]),
     }
