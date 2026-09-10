@@ -303,3 +303,49 @@ data class DirectAnalysisResponse(
     @SerialName("python_scripts") val pythonScripts: List<PythonScript> = emptyList(),
     val recommendations: List<String> = emptyList(),
 )
+
+// --- Request / response envelopes used by the REST client (see backend/app/api) ---
+
+@Serializable
+data class FileValidateResponse(
+    val ok: Boolean,
+    val bucket: String,
+    @SerialName("storage_path") val storagePath: String,
+    @SerialName("file_name") val fileName: String,
+    @SerialName("file_size") val fileSize: Long,
+    @SerialName("mime_type") val mimeType: String,
+    @SerialName("max_size_bytes") val maxSizeBytes: Long,
+    val extension: String,
+)
+
+@Serializable
+data class SignedUrlResponse(
+    @SerialName("signed_url") val signedUrl: String,
+    @SerialName("file_name") val fileName: String,
+    @SerialName("mime_type") val mimeType: String? = null,
+    @SerialName("file_size") val fileSize: Long = 0,
+    @SerialName("expires_in_seconds") val expiresInSeconds: Int = 300,
+)
+
+@Serializable
+data class CreateProjectRequest(
+    val name: String,
+    val description: String = "",
+)
+
+@Serializable
+data class RegisterDatasetRequest(
+    @SerialName("project_id") val projectId: String,
+    val name: String,
+    @SerialName("source_type") val sourceType: String,
+    @SerialName("storage_path") val storagePath: String? = null,
+    @SerialName("file_size") val fileSize: Long = 0,
+    @SerialName("mime_type") val mimeType: String? = null,
+)
+
+@Serializable
+data class CreateRunRequest(
+    @SerialName("project_id") val projectId: String,
+    @SerialName("dataset_id") val datasetId: String? = null,
+    val prompt: String,
+)
