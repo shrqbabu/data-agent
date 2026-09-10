@@ -239,11 +239,7 @@ private fun DatasetCard(dataset: Dataset, onViewSchema: () -> Unit, onViewQualit
 }
 
 @Composable
-<<<<<<< HEAD
-private fun RowScope.StatBox(label: String, value: String) {
-=======
 private fun StatBox(label: String, value: String, modifier: Modifier = Modifier) {
->>>>>>> a812ebdc81d636000f9284bbd38f3a68b7af3946
     Surface(
         modifier = modifier,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),

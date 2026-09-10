@@ -1,0 +1,166 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master, dev, 'arena/**', 'feature/**', 'fix/**']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Needed to publish the APK as a release asset and to push the CI diagnostics branch.
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_VERSION: '8.11.1'
+  APK_ARTIFACT: analytics-agent-debug-apk
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle ${{ env.GRADLE_VERSION }}
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+          validate-wrappers: false
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Toolchain info
+        run: |
+          java -version
+          gradle --version
+          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          ls "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/platforms" || true
+
+      - name: Ensure Gradle wrapper jar exists
+        working-directory: android
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Wrapper jar missing - regenerating with Gradle ${GRADLE_VERSION}"
+            gradle wrapper --gradle-version "${GRADLE_VERSION}"
+          fi
+          chmod +x ./gradlew
+
+      - name: Warn when build-time config is missing
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          missing=""
+          [ -z "${SUPABASE_URL:-}" ] && missing="$missing SUPABASE_URL"
+          [ -z "${SUPABASE_KEY:-}" ] && missing="$missing SUPABASE_KEY"
+          [ -z "${API_URL:-}" ] && missing="$missing API_URL"
+          if [ -n "$missing" ]; then
+            echo "::warning::Missing repo secrets:$missing - the APK will build but shows the 'not configured' screen until they are set in Settings > Secrets and variables > Actions."
+          else
+            echo "Build-time configuration: all required secrets present."
+          fi
+
+      # continue-on-error keeps the diagnostics step below reachable when the build fails.
+      - name: Assemble debug APK
+        id: build
+        continue-on-error: true
+        working-directory: android
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleDebug --stacktrace --no-daemon \
+            -PANALYTICS_AGENT_SUPABASE_URL="${SUPABASE_URL:-}" \
+            -PANALYTICS_AGENT_SUPABASE_KEY="${SUPABASE_KEY:-}" \
+            -PANALYTICS_AGENT_API_URL="${API_URL:-}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-build.log"
+
+      # The Actions log download endpoint is not always reachable from every
+      # environment; mirroring the tail of the build log onto a throwaway
+      # `ci-logs` branch makes failures inspectable anywhere via plain git.
+      - name: Publish build log on failure
+        if: steps.build.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          tail -c 400000 "$RUNNER_TEMP/gradle-build.log" > gradle-build.log
+          git checkout --orphan ci-logs >/dev/null 2>&1 || git checkout -B ci-logs
+          git rm -r --cached . -q >/dev/null 2>&1 || true
+          git add -f gradle-build.log
+          git commit -q -m "CI diagnostics: gradle build failure (${GITHUB_SHA})"
+          git push -f origin HEAD:ci-logs
+
+      - name: Show build log tail
+        if: always()
+        run: tail -n 120 "$RUNNER_TEMP/gradle-build.log" || true
+
+      - name: Collect APK
+        if: steps.build.outcome == 'success'
+        working-directory: android
+        run: |
+          set -euo pipefail
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' | head -n 1)
+          [ -n "$APK" ] || { echo "No APK produced"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/out"
+          cp "$APK" "$RUNNER_TEMP/out/analytics-agent-debug.apk"
+          ( cd "$RUNNER_TEMP/out" && sha256sum analytics-agent-debug.apk > SHA256SUMS.txt )
+          ls -lh "$RUNNER_TEMP/out"
+          cat "$RUNNER_TEMP/out/SHA256SUMS.txt"
+
+      - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_ARTIFACT }}
+          path: |
+            ${{ runner.temp }}/out/analytics-agent-debug.apk
+            ${{ runner.temp }}/out/SHA256SUMS.txt
+          retention-days: 30
+
+      # A rolling release gives a stable, browser-friendly download link:
+      # https://github.com/<owner>/<repo>/releases/tag/apk-latest
+      - name: Publish APK to the 'apk-latest' release
+        if: steps.build.outcome == 'success' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          NOTES="Automated debug build of commit ${GITHUB_SHA} (${GITHUB_REF_NAME}).
+          Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          Install: transfer \`analytics-agent-debug.apk\` to an Android 8.0+ device and allow
+          installation from unknown sources. Verify the download against \`SHA256SUMS.txt\`."
+          if gh release view apk-latest >/dev/null 2>&1; then
+            gh release upload apk-latest "$RUNNER_TEMP/out/analytics-agent-debug.apk" --clobber
+            gh release upload apk-latest "$RUNNER_TEMP/out/SHA256SUMS.txt" --clobber
+            gh release edit apk-latest --notes "$NOTES"
+          else
+            gh release create apk-latest \
+              "$RUNNER_TEMP/out/analytics-agent-debug.apk" \
+              "$RUNNER_TEMP/out/SHA256SUMS.txt" \
+              --title "Analytics Agent - latest debug APK" \
+              --notes "$NOTES"
+          fi
+
+      - name: Fail the job when the APK did not build
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "::error::Gradle build failed - see the 'ci-logs' branch (gradle-build.log) for details."
+          exit 1

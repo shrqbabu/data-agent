@@ -199,27 +199,6 @@ class BackendApi(
 
     /** Thin holder that turns a transport result into typed data. */
     private inner class Response(private val result: AppResult<JsonElement>) {
-<<<<<<< HEAD
-        fun <T> asData(serializer: KSerializer<T>): AppResult<T> = when (val r = result) {
-            is AppResult.Success -> runCatching {
-                AppResult.Success(json.decodeFromJsonElement(serializer, r.data))
-            }.getOrElse { AppResult.Error(AppError.from(it)) }
-            is AppResult.Error -> AppResult.Error(r.error)
-        }
-
-        fun <T> asList(serializer: KSerializer<T>): AppResult<List<T>> = when (val r = result) {
-            is AppResult.Success -> runCatching {
-                val arr = r.data as? JsonArray
-                    ?: throw IllegalArgumentException("Expected a JSON array")
-                AppResult.Success(arr.map { json.decodeFromJsonElement(serializer, it) })
-            }.getOrElse { AppResult.Error(AppError.from(it)) }
-            is AppResult.Error -> AppResult.Error(r.error)
-        }
-
-        fun unit(): AppResult<Unit> = when (val r = result) {
-            is AppResult.Success -> AppResult.Success(Unit)
-            is AppResult.Error -> AppResult.Error(r.error)
-=======
         fun <T> asData(serializer: KSerializer<T>): AppResult<T> {
             val r = result
             return when (r) {
@@ -248,7 +227,6 @@ class BackendApi(
                 is AppResult.Success -> AppResult.Success(Unit)
                 is AppResult.Error -> AppResult.Error(r.error)
             }
->>>>>>> a812ebdc81d636000f9284bbd38f3a68b7af3946
         }
     }
 }
